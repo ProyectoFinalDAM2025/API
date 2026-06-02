@@ -47,13 +47,13 @@ class PublicacionController extends Controller
 
         // 1. Carga el perfil del PROPIETARIO de la publicación (similar a postsByUsuario)
         $publicacionesQuery->with(['user' => function ($query) {
-            $query->with(['empresa', 'desempleado']);
+            $query->with(['empresa', 'desempleado', 'administrador']);
         }]);
 
         // 2. Carga los comentarios y, dentro de cada comentario, carga el perfil específico del USUARIO del comentario
         $publicacionesQuery->with(['comentarios' => function ($query) {
             $query->with(['user' => function ($userQuery) {
-                $userQuery->with(['empresa', 'desempleado']);
+                $userQuery->with(['empresa', 'desempleado', 'administrador']);
             }]);
             $query->orderBy('FechaComentario', 'desc'); // Opcional: ordenar los comentarios
         }])->latest();
@@ -221,20 +221,13 @@ class PublicacionController extends Controller
         $publicacion->loadCount('comentarios');
         $publicacion->load([
             'user' => function ($userQuery) {
-                $userQuery->with(['empresa' => function ($empresaQuery) {
-                    $empresaQuery->whereHas('user', function ($q) {
-                        $q->where('rol', 'empresa');
-                    });
-                }, 'desempleado' => function ($desempleadoQuery) {
-                    $desempleadoQuery->whereHas('user', function ($q) {
-                        $q->where('rol', 'usuario');
-                    });
-                }]);
+                $userQuery->with(['empresa', 'desempleado', 'administrador']);
             },
             'documentos', // Carga los documentos asociados
             'likes',      // Carga la relación de likes para contar y verificar si el usuario actual le dio like
             'comentarios' => function ($query) {
                 // Dentro de los comentarios, carga el usuario del comentario y su perfil específico (empresa/desempleado)
+                $query->with('user.administrador');
                 $query->with(['user' => function ($userQuery) {
                     $userQuery->with(['empresa' => function ($empresaQuery) {
                         $empresaQuery->whereHas('user', function ($q) {
@@ -539,6 +532,8 @@ class PublicacionController extends Controller
 
         } elseif ($user->rol === 'usuario') {
             $publicacionesQuery->with('user.desempleado');
+        } elseif ($user->rol === 'admin') {
+            $publicacionesQuery->with('user.administrador');
         }
 
         // 2. Carga los comentarios y, dentro de cada comentario, carga el perfil específico del USUARIO del comentario
@@ -555,6 +550,10 @@ class PublicacionController extends Controller
                     // Solo cargar 'desempleado' si el rol es 'usuario'
                     $desempleadoQuery->whereHas('user', function ($q) {
                         $q->where('rol', 'usuario');
+                    });
+                }, 'administrador' => function ($administradorQuery) {
+                    $administradorQuery->whereHas('user', function ($q) {
+                        $q->where('rol', 'admin');
                     });
                 }]);
             }]);
@@ -619,6 +618,8 @@ class PublicacionController extends Controller
 
         } elseif ($user->rol === 'usuario') {
             $publicacionesQuery->with('user.desempleado');
+        } elseif ($user->rol === 'admin') {
+            $publicacionesQuery->with('user.administrador');
         }
 
         // 2. Carga los comentarios y, dentro de cada comentario, carga el perfil específico del USUARIO del comentario
@@ -635,6 +636,10 @@ class PublicacionController extends Controller
                     // Solo cargar 'desempleado' si el rol es 'usuario'
                     $desempleadoQuery->whereHas('user', function ($q) {
                         $q->where('rol', 'usuario');
+                    });
+                }, 'administrador' => function ($administradorQuery) {
+                    $administradorQuery->whereHas('user', function ($q) {
+                        $q->where('rol', 'admin');
                     });
                 }]);
             }]);
