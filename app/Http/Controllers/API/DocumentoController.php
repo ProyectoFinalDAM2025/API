@@ -53,7 +53,7 @@ class DocumentoController extends Controller
         $userId = auth()->id();
 
         $validator = Validator::make($request->all(), [
-            //'IDUsuario' => 'required|exists:users,IDUsuario',
+            'IDUsuario' => 'nullable|exists:users,IDUsuario',
             'IDPublicacion' => 'nullable|exists:publicaciones,IDPublicacion', // Opcional, dependiendo de tu lógica
             'Tipo' => 'required|string|in:Foto,Video,PDF,Publicacion', // Define los tipos permitidos
             'Descripcion' => 'nullable|string',
@@ -71,7 +71,12 @@ class DocumentoController extends Controller
 
         try {
 
-            $user = User::findOrFail($userId);
+            $targetUserId = $userId;
+            if ($request->filled('IDUsuario') && $this->isOfficiumAdmin()) {
+                $targetUserId = (int) $request->input('IDUsuario');
+            }
+
+            $user = User::findOrFail($targetUserId);
             $tipoDocumento = $request->input('Tipo');
             $archivo = $request->file('Archivo');
             $nombreArchivoOriginal = $archivo->getClientOriginalName();
@@ -85,6 +90,8 @@ class DocumentoController extends Controller
                 $carpetaBase = 'Empresa';
             } elseif ($user->rol === 'usuario') {
                 $carpetaBase = 'Desempleado';
+            } elseif ($user->rol === 'admin') {
+                $carpetaBase = 'Administrador';
             } else {
                 return response()->json([
                     "StatusCode" => 400,
@@ -94,7 +101,7 @@ class DocumentoController extends Controller
             }
 
             // Define la ruta de almacenamiento
-            $rutaAlmacenamiento = "{$carpetaBase}/{$userId}/{$tipoDocumento}";
+            $rutaAlmacenamiento = "{$carpetaBase}/{$targetUserId}/{$tipoDocumento}";
 
             // Guarda el archivo
             $rutaArchivo = $archivo->storeAs($rutaAlmacenamiento, $nombreArchivoUnico, 'public');
