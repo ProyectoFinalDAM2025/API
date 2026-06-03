@@ -213,11 +213,22 @@ class ReporteController extends Controller
 
         $this->deleteUserStorage($usuario);
         $idUsuario = $usuario->IDUsuario;
+        $reporterIds = Reporte::where('TipoEntidad', 'Usuario')
+            ->where('IDEntidad', $idUsuario)
+            ->whereNotNull('IDUsuario')
+            ->pluck('IDUsuario')
+            ->unique()
+            ->values();
+        $tipo = $this->nombreTipoEntidad($reporte->TipoEntidad);
+        $ruta = $this->rutaEntidadReportada($reporte->TipoEntidad, $idUsuario);
         $usuario->delete();
 
         Reporte::where('TipoEntidad', 'Usuario')
             ->where('IDEntidad', $idUsuario)
             ->delete();
+
+        $this->notifyReportersOfEntityDeletion($reporterIds, $tipo, $ruta);
+        $this->notifyAdminsOfEntityDeletion($tipo, $ruta);
 
         return response()->json([
             'StatusCode' => 200,
@@ -348,6 +359,36 @@ class ReporteController extends Controller
                 'IDUsuario' => $admin->IDUsuario,
                 'Titulo' => "Reporte de {$tipo} moderado",
                 'Mensaje' => "Un reporte de {$tipo} fue moderado por administracion.",
+                'Leido' => false,
+                'FechaNotificacion' => now(),
+                'Ruta' => $ruta,
+            ]);
+        }
+    }
+
+    private function notifyReportersOfEntityDeletion($reporterIds, string $tipo, string $ruta): void
+    {
+        foreach ($reporterIds as $reporterId) {
+            Notificacion::create([
+                'IDUsuario' => $reporterId,
+                'Titulo' => "Reporte de {$tipo} resuelto",
+                'Mensaje' => "El {$tipo} que reportaste fue eliminado por administracion.",
+                'Leido' => false,
+                'FechaNotificacion' => now(),
+                'Ruta' => $ruta,
+            ]);
+        }
+    }
+
+    private function notifyAdminsOfEntityDeletion(string $tipo, string $ruta): void
+    {
+        $admins = User::where('rol', 'admin')->get();
+
+        foreach ($admins as $admin) {
+            Notificacion::create([
+                'IDUsuario' => $admin->IDUsuario,
+                'Titulo' => "Reporte de {$tipo} eliminado",
+                'Mensaje' => "Un {$tipo} reportado fue eliminado por administracion.",
                 'Leido' => false,
                 'FechaNotificacion' => now(),
                 'Ruta' => $ruta,
