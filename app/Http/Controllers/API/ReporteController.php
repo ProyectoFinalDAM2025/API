@@ -184,6 +184,7 @@ class ReporteController extends Controller
 
         $this->notifyReporterOfModeration($reporte);
         $this->notifyReportedUserOfModeration($reporte);
+        $this->notifyAdminsOfModeration($reporte);
 
         return response()->json([
             'StatusCode' => 200,
@@ -333,6 +334,25 @@ class ReporteController extends Controller
             'FechaNotificacion' => now(),
             'Ruta' => $this->rutaEntidadReportada($reporte->TipoEntidad, $reporte->IDEntidad),
         ]);
+    }
+
+    private function notifyAdminsOfModeration(Reporte $reporte): void
+    {
+        $tipo = $this->nombreTipoEntidad($reporte->TipoEntidad);
+        $ruta = $this->rutaEntidadReportada($reporte->TipoEntidad, $reporte->IDEntidad);
+
+        $admins = User::where('rol', 'admin')->get();
+
+        foreach ($admins as $admin) {
+            Notificacion::create([
+                'IDUsuario' => $admin->IDUsuario,
+                'Titulo' => "Reporte de {$tipo} moderado",
+                'Mensaje' => "Un reporte de {$tipo} fue moderado por administracion.",
+                'Leido' => false,
+                'FechaNotificacion' => now(),
+                'Ruta' => $ruta,
+            ]);
+        }
     }
 
     private function nombreTipoEntidad(?string $tipoEntidad): string
