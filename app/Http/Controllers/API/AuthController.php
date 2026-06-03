@@ -402,6 +402,77 @@ class AuthController extends Controller
         ], 200);
     }
 
+    public function searchUsers(Request $request)
+    {
+        $query = trim((string) $request->input('q', ''));
+        $rol = $request->input('rol');
+        $perPage = min((int) $request->input('per_page', 20), 50);
+
+        $empresas = collect();
+        $desempleados = collect();
+
+        if (!$rol || $rol === 'Empresa') {
+            $empresas = Empresa::query()
+                ->when($query !== '', function ($empresaQuery) use ($query) {
+                    $empresaQuery->where(function ($q) use ($query) {
+                        $q->where('NombreEmpresa', 'like', "%{$query}%")
+                            ->orWhere('Ubicacion', 'like', "%{$query}%")
+                            ->orWhere('SitioWeb', 'like', "%{$query}%");
+                    });
+                })
+                ->limit($perPage)
+                ->get()
+                ->map(function ($empresa) {
+                    return [
+                        'IDUsuario' => $empresa->IDUsuario,
+                        'Rol' => 'Empresa',
+                        'Nombre' => $empresa->NombreEmpresa,
+                        'Foto' => $empresa->Foto,
+                        'Descripcion' => collect([$empresa->Ubicacion, $empresa->SitioWeb])
+                            ->filter()
+                            ->join(' - '),
+                    ];
+                });
+        }
+
+        if (!$rol || $rol === 'Desempleado') {
+            $desempleados = Desempleado::query()
+                ->when($query !== '', function ($desempleadoQuery) use ($query) {
+                    $desempleadoQuery->where(function ($q) use ($query) {
+                        $q->where('Nombre', 'like', "%{$query}%")
+                            ->orWhere('Apellido', 'like', "%{$query}%")
+                            ->orWhere('Ubicacion', 'like', "%{$query}%")
+                            ->orWhere('Disponibilidad', 'like', "%{$query}%")
+                            ->orWhere('Porfolios', 'like', "%{$query}%");
+                    });
+                })
+                ->limit($perPage)
+                ->get()
+                ->map(function ($desempleado) {
+                    return [
+                        'IDUsuario' => $desempleado->IDUsuario,
+                        'Rol' => 'Desempleado',
+                        'Nombre' => trim("{$desempleado->Nombre} {$desempleado->Apellido}"),
+                        'Foto' => $desempleado->Foto,
+                        'Descripcion' => collect([$desempleado->Disponibilidad, $desempleado->Ubicacion])
+                            ->filter()
+                            ->join(' - '),
+                    ];
+                });
+        }
+
+        return response()->json([
+            "StatusCode" => 200,
+            "ReasonPhrase" => "Usuarios encontrados",
+            "Message" => "Usuarios encontrados correctamente",
+            "Data" => $empresas
+                ->merge($desempleados)
+                ->sortBy('Nombre')
+                ->values()
+                ->take($perPage)
+        ], 200);
+    }
+
     public function userID($idUsuario)
     {
 

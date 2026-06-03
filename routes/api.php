@@ -37,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post("verifyCode", [AuthController::class, "verifyCode"]);
     Route::post("change-password", [AuthController::class, "changePassword"]);
     Route::get('usuarios/grupos', [AuthController::class, 'listGroupUser']);
+    Route::get('usuarios/buscar', [AuthController::class, 'searchUsers']);
     Route::get('usuarios/{idUsuario}', [AuthController::class, 'userID']);
     Route::get('rolUsuario', [AuthController::class, 'userRol']);
 
