@@ -6,9 +6,12 @@ use Illuminate\Support\Facades\Log;
 
 class ImageThumbnailService
 {
+    private ?string $ffmpegBinary = null;
+
     public function generate(string $relativeImagePath, string $disk = 'public'): ?string
     {
-        if (!$this->isFfmpegAvailable()) {
+        $ffmpeg = $this->getFfmpegBinary();
+        if ($ffmpeg === null) {
             Log::warning('FFmpeg no esta disponible para generar miniaturas de imagen.');
             return null;
         }
@@ -27,7 +30,8 @@ class ImageThumbnailService
         }
 
         $command = sprintf(
-            'ffmpeg -y -i %s -vf %s -frames:v 1 -quality 80 %s 2>&1',
+            '%s -y -i %s -vf %s -frames:v 1 -quality 80 %s 2>&1',
+            escapeshellarg($ffmpeg),
             escapeshellarg($imagePath),
             escapeshellarg('scale=600:600:force_original_aspect_ratio=increase,crop=600:600'),
             escapeshellarg($thumbnailPath)
@@ -49,7 +53,8 @@ class ImageThumbnailService
 
     public function generatePreview(string $relativeImagePath, string $disk = 'public'): ?string
     {
-        if (!$this->isFfmpegAvailable()) {
+        $ffmpeg = $this->getFfmpegBinary();
+        if ($ffmpeg === null) {
             Log::warning('FFmpeg no esta disponible para generar preview de imagen.');
             return null;
         }
@@ -68,7 +73,8 @@ class ImageThumbnailService
         }
 
         $command = sprintf(
-            'ffmpeg -y -i %s -vf %s -frames:v 1 -quality 85 %s 2>&1',
+            '%s -y -i %s -vf %s -frames:v 1 -quality 85 %s 2>&1',
+            escapeshellarg($ffmpeg),
             escapeshellarg($imagePath),
             escapeshellarg('scale=1400:1400:force_original_aspect_ratio=decrease'),
             escapeshellarg($previewPath)
@@ -104,10 +110,28 @@ class ImageThumbnailService
         return "{$directory}/Previews/{$filename}.webp";
     }
 
-    private function isFfmpegAvailable(): bool
+    private function getFfmpegBinary(): ?string
     {
-        exec('ffmpeg -version 2>&1', $output, $resultCode);
+        if ($this->ffmpegBinary !== null) {
+            return $this->ffmpegBinary;
+        }
 
-        return $resultCode === 0;
+        $candidates = array_filter([
+            env('FFMPEG_PATH'),
+            'ffmpeg',
+            '/usr/bin/ffmpeg',
+            '/usr/local/bin/ffmpeg',
+            'C:\\ffmpeg\\bin\\ffmpeg.exe',
+        ]);
+
+        foreach ($candidates as $candidate) {
+            exec(escapeshellarg($candidate) . ' -version 2>&1', $output, $resultCode);
+            if ($resultCode === 0) {
+                $this->ffmpegBinary = $candidate;
+                return $this->ffmpegBinary;
+            }
+        }
+
+        return null;
     }
 }

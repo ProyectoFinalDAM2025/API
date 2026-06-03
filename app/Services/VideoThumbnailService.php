@@ -6,9 +6,12 @@ use Illuminate\Support\Facades\Log;
 
 class VideoThumbnailService
 {
+    private ?string $ffmpegBinary = null;
+
     public function generate(string $relativeVideoPath, string $disk = 'public'): ?string
     {
-        if (!$this->isFfmpegAvailable()) {
+        $ffmpeg = $this->getFfmpegBinary();
+        if ($ffmpeg === null) {
             Log::warning('FFmpeg no esta disponible para generar miniaturas de video.');
             return null;
         }
@@ -27,7 +30,8 @@ class VideoThumbnailService
         }
 
         $command = sprintf(
-            'ffmpeg -y -ss 00:00:01 -i %s -frames:v 1 -q:v 2 %s 2>&1',
+            '%s -y -ss 00:00:01 -i %s -frames:v 1 -q:v 2 %s 2>&1',
+            escapeshellarg($ffmpeg),
             escapeshellarg($videoPath),
             escapeshellarg($thumbnailPath)
         );
@@ -54,10 +58,28 @@ class VideoThumbnailService
         return "{$directory}/Thumbnails/{$filename}.jpg";
     }
 
-    private function isFfmpegAvailable(): bool
+    private function getFfmpegBinary(): ?string
     {
-        exec('ffmpeg -version 2>&1', $output, $resultCode);
+        if ($this->ffmpegBinary !== null) {
+            return $this->ffmpegBinary;
+        }
 
-        return $resultCode === 0;
+        $candidates = array_filter([
+            env('FFMPEG_PATH'),
+            'ffmpeg',
+            '/usr/bin/ffmpeg',
+            '/usr/local/bin/ffmpeg',
+            'C:\\ffmpeg\\bin\\ffmpeg.exe',
+        ]);
+
+        foreach ($candidates as $candidate) {
+            exec(escapeshellarg($candidate) . ' -version 2>&1', $output, $resultCode);
+            if ($resultCode === 0) {
+                $this->ffmpegBinary = $candidate;
+                return $this->ffmpegBinary;
+            }
+        }
+
+        return null;
     }
 }
