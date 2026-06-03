@@ -479,7 +479,7 @@ class ReporteController extends Controller
             $usuario->empresa->NombreEmpresa = '[MODERADO] Perfil retirado';
             $usuario->empresa->Ubicacion = 'Perfil moderado por administracion';
             $usuario->empresa->SitioWeb = null;
-            $usuario->empresa->Foto = null;
+            $usuario->empresa->Foto = 'assets/default-company.png';
             $usuario->empresa->save();
         }
 
@@ -487,9 +487,9 @@ class ReporteController extends Controller
             $usuario->desempleado->Nombre = '[MODERADO]';
             $usuario->desempleado->Apellido = 'Perfil retirado';
             $usuario->desempleado->Porfolios = null;
-            $usuario->desempleado->Disponibilidad = 'Perfil moderado por administracion';
+            $usuario->desempleado->Disponibilidad = 'Temporal';
             $usuario->desempleado->Ubicacion = 'Perfil moderado por administracion';
-            $usuario->desempleado->Foto = null;
+            $usuario->desempleado->Foto = 'assets/default-user.png';
             $usuario->desempleado->save();
         }
     }
