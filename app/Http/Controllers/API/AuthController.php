@@ -179,13 +179,10 @@ class AuthController extends Controller
             if ($user->rol === 'admin') {
                 $logged = Administrador::where('IDUsuario', $user->IDUsuario)->first();
                 $rol = "Administrador";
-            }
-
-            if (!$logged) {
+            } elseif ($user->rol === 'empresa') {
                 $logged = Empresa::where('IDUsuario', $user->IDUsuario)->first();
                 $rol = "Empresa";
-            }
-            if (!$logged) {
+            } elseif ($user->rol === 'usuario') {
                 $logged = Desempleado::where('IDUsuario', $user->IDUsuario)->first();
                 $rol = "Usuario";
             }
